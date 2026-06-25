@@ -1,4 +1,4 @@
-# SYLVOR — AI Gateway
+# PULSE — AI Gateway
 
 一个轻量级的 AI API 网关，统一管理和代理多个 AI 供应商（OpenAI、Anthropic 等）的请求，提供会话监控、审计日志、用量统计和端点管理功能。
 
