@@ -364,6 +364,7 @@ async function proxyAnthropic(gatewayKey: string, request: Request, set: { statu
 // === Environment & Port ===
 const isProduction = process.env.NODE_ENV === "production";
 const PORT = parseInt(process.env.PORT || "3000", 10);
+const HOST = process.env.HOST || "0.0.0.0";
 
 // === Frontend dev server with HMR (internal port, dev only) ===
 if (!isProduction) {
@@ -433,8 +434,8 @@ if (isProduction) {
     set.headers["Content-Type"] = "text/html; charset=utf-8";
     return Bun.file(distDir + "index.html");
   });
-  app.listen(PORT);
-  console.log(`🚀 Pulse AI Gateway running on http://0.0.0.0:${PORT} (production)`);
+  app.listen({ port: PORT, hostname: HOST });
+  console.log(`🚀 Pulse AI Gateway running on http://${HOST}:${PORT} (production)`);
 } else {
   // === Dev: Bun.serve with HMR proxy ===
   Bun.serve({

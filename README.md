@@ -43,6 +43,17 @@ A self-hosted AI gateway in a single Bun process — OpenAI- and Anthropic-compa
 
 Requires [Bun](https://bun.sh) **>= 1.2**.
 
+### Install from npm (single-user / local)
+
+```bash
+bun install -g @bryxen/pulse
+pulse run
+```
+
+Opens on `http://127.0.0.1:3000` with no login — data lives at `~/.pulse/pulse.db`. Use `pulse run --help` for flags (`--port`, `--host`, `--db-path`, `--auth` to enable the login page).
+
+### From source (development)
+
 ```bash
 git clone <your-repo-url>
 cd pulse
@@ -52,7 +63,7 @@ bun run dev          # http://localhost:3000 (HMR)
 
 Login with **admin / admin123**, then change the password immediately.
 
-### Production
+### Production (self-hosted, multi-user)
 
 ```bash
 bun run build        # bundles frontend → ./dist
@@ -135,7 +146,9 @@ x-api-key: <gateway_key>
 |----------|---------|-------------|
 | `NODE_ENV` | — | Set to `production` for production mode |
 | `PORT` | `3000` | Server listening port |
+| `HOST` | `0.0.0.0` | Bind address (`pulse run` defaults to `127.0.0.1`) |
 | `DB_PATH` | `pulse.db` | SQLite database file path |
+| `PULSE_NO_AUTH` | — | Set to `1` to disable login (single-user / local installs) |
 
 Configure upstream providers in the dashboard's **Endpoints** tab: upstream URL, upstream API key, gateway key (what clients send), default model, and per-million-token pricing.
 

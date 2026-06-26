@@ -1,0 +1,25 @@
+# package.json's `files` field is the source of truth for what gets shipped.
+# This .npmignore is a belt-and-suspenders pass — it strips anything that
+# accidentally lands inside a whitelisted directory (tests under src/, source
+# maps under dist/, editor crud, etc.).
+
+# Tests
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+**/__tests__/
+
+# Source maps — useful in repo / dev, dead weight in a published tarball
+**/*.map
+
+# Editor / OS noise
+.DS_Store
+*.swp
+.vscode/
+.idea/
+
+# Local runtime data
+pulse.db
+pulse.db-*
+*.log

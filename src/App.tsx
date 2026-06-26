@@ -49,7 +49,20 @@ export function App() {
         localStorage.removeItem("auth_token");
         localStorage.removeItem("user");
       }
+      return;
     }
+    // Probe for a no-auth backend (single-user / local install via `pulse run`).
+    // When PULSE_NO_AUTH=1 on the server, /api/auth/me returns the synthetic
+    // admin without any token and we skip the login page entirely.
+    fetch("/api/auth/me")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((u: User | null) => {
+        if (u && typeof u.id === "number") {
+          setUser(u);
+          setToken("local");
+        }
+      })
+      .catch(() => {});
   }, []);
 
   // Fetch sessions when user is logged in

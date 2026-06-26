@@ -1,4 +1,6 @@
 import { Database } from "bun:sqlite";
+import { mkdirSync } from "node:fs";
+import { dirname } from "node:path";
 
 const DB_PATH = process.env.DB_PATH || "pulse.db";
 
@@ -7,6 +9,12 @@ let _db: Database | null = null;
 
 export function getDb(): Database {
   if (!_db) {
+    // Ensure parent dir exists — needed when DB_PATH points outside cwd
+    // (e.g. ~/.pulse/pulse.db when launched via the `pulse` CLI).
+    const dir = dirname(DB_PATH);
+    if (dir && dir !== "." && dir !== "/") {
+      try { mkdirSync(dir, { recursive: true }); } catch { /* exists */ }
+    }
     _db = new Database(DB_PATH, { create: true });
     _db.run("PRAGMA journal_mode=WAL");
     _db.run("PRAGMA foreign_keys=ON");

@@ -1,13 +1,53 @@
 {
-  "name": "pulse-ai-gateway",
-  "version": "0.0.1",
-  "private": true,
+  "name": "@bryxen/pulse",
+  "version": "0.1.0",
+  "description": "Self-hosted AI gateway — OpenAI- and Anthropic-compatible, with audit logs, live dashboards, and per-token cost tracking. Powered by Bun.",
+  "private": false,
   "type": "module",
+  "license": "MIT",
+  "homepage": "https://github.com/sylvor-ai/pulse#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sylvor-ai/pulse.git"
+  },
+  "bugs": {
+    "url": "https://github.com/sylvor-ai/pulse/issues"
+  },
+  "keywords": [
+    "ai",
+    "gateway",
+    "llm",
+    "openai",
+    "anthropic",
+    "claude",
+    "proxy",
+    "self-hosted",
+    "bun",
+    "cli"
+  ],
+  "bin": {
+    "pulse": "./bin/pulse.mjs"
+  },
+  "files": [
+    "bin",
+    "src",
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "bun": ">=1.2"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "dev": "bun --hot src/index.ts",
     "dev:watch": "bun --hot src/index.ts",
     "build": "bun build ./src/index.html --outdir=dist --entry-naming \"[name].[ext]\" --sourcemap --target=browser --minify",
-    "start": "NODE_ENV=production bun src/index.ts"
+    "build:release": "bun build ./src/index.html --outdir=dist --entry-naming \"[name].[ext]\" --target=browser --minify",
+    "start": "NODE_ENV=production bun src/index.ts",
+    "prepublishOnly": "bun run build:release"
   },
   "dependencies": {
     "@elysiajs/cookie": "^0.8.0",

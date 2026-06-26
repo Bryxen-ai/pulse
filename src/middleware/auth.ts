@@ -1,6 +1,19 @@
 import { getDb } from "../db";
 import type { User, UserRole } from "../types";
 
+// When PULSE_NO_AUTH=1 (set by the CLI `pulse run` for single-user / local
+// installs), every route gets a synthetic admin and auth checks short-circuit.
+// The systemd / multi-user deployment leaves this unset and behaves unchanged.
+const NO_AUTH = process.env.PULSE_NO_AUTH === "1";
+
+const LOCAL_ADMIN: User = {
+  id: 0,
+  username: "admin",
+  display_name: "Admin",
+  role: "admin",
+};
+const LOCAL_TOKEN = "local";
+
 interface AuthSession {
   id: string;
   user_id: number;
@@ -45,6 +58,7 @@ export function extractToken(authHeader: string | null): string | null {
 }
 
 export function requireAuth(authHeader: string | null): { user: User; token: string } | Response {
+  if (NO_AUTH) return { user: LOCAL_ADMIN, token: LOCAL_TOKEN };
   const token = extractToken(authHeader);
   if (!token) {
     return new Response(JSON.stringify({ error: "Authentication required" }), {
