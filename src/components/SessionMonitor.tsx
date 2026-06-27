@@ -406,14 +406,16 @@ function ChatPanel({ messages, session }: ChatPanelProps) {
   const providerAbbr = session.provider === "OpenAI" ? "OA" : "AN";
 
   const roleAvatar = (role: Message["role"]) =>
-    role === "user" ? "U" : role === "assistant" ? providerAbbr : "SYS";
+    role === "user" ? "U" : role === "assistant" ? providerAbbr : role === "tool_result" ? "↩" : "SYS";
   const roleAvatarClass = (role: Message["role"]) =>
-    role === "user" ? "user" : role === "assistant" ? `assistant ${providerClass}` : "system";
+    role === "user" ? "user" : role === "assistant" ? `assistant ${providerClass}` : role === "tool_result" ? "tool_result" : "system";
   const roleLabel = (role: Message["role"]) =>
     role === "user"
       ? t("session.roleUser")
       : role === "assistant"
       ? t("session.roleAssistant")
+      : role === "tool_result"
+      ? t("session.roleToolResult")
       : t("session.roleSystem");
 
   return (

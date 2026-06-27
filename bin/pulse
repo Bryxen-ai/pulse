@@ -7,11 +7,15 @@ import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
 import { homedir } from "node:os";
 import path from "node:path";
+import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, "..");
 const require = createRequire(import.meta.url);
 const pkg = require(path.join(root, "package.json"));
+
+const PULSE_DIR = path.join(homedir(), ".pulse");
+const PID_FILE = path.join(PULSE_DIR, "pulse.pid");
 
 const { values, positionals } = parseArgs({
   args: process.argv.slice(2),
@@ -33,6 +37,8 @@ function usage() {
 
 Usage:
   pulse run [options]      Start the gateway (default)
+  pulse stop               Stop a running gateway
+  pulse status             Check if the gateway is running
   pulse version            Print version
   pulse help               Show this help
 
@@ -48,7 +54,58 @@ Examples:
   pulse run
   pulse run --port 8080 --auth
   pulse run --db-path ./pulse.db
+  pulse stop
+  pulse status
 `);
+}
+
+function ensurePulseDir() {
+  if (!existsSync(PULSE_DIR)) mkdirSync(PULSE_DIR, { recursive: true });
+}
+
+function readPid(): number | null {
+  try {
+    const raw = readFileSync(PID_FILE, "utf-8").trim();
+    const pid = parseInt(raw, 10);
+    if (!pid || isNaN(pid)) return null;
+
+    // Verify the process is still alive
+    try { process.kill(pid, 0); } catch { return null; }
+    return pid;
+  } catch {
+    return null;
+  }
+}
+
+function stop() {
+  const pid = readPid();
+  if (!pid) {
+    console.log("pulse: no running gateway found");
+    process.exit(0);
+  }
+  console.log(`pulse: stopping gateway (pid ${pid})…`);
+  try {
+    process.kill(pid, "SIGTERM");
+    // Wait a moment for graceful shutdown
+    setTimeout(() => {
+      try { process.kill(pid, 0); process.kill(pid, "SIGKILL"); } catch {}
+      try { unlinkSync(PID_FILE); } catch {}
+      console.log("pulse: stopped");
+      process.exit(0);
+    }, 2000);
+  } catch {
+    console.error("pulse: failed to stop gateway");
+    process.exit(1);
+  }
+}
+
+function status() {
+  const pid = readPid();
+  if (pid) {
+    console.log(`pulse: running (pid ${pid})`);
+  } else {
+    console.log("pulse: not running");
+  }
 }
 
 switch (cmd) {
@@ -60,13 +117,38 @@ switch (cmd) {
     usage();
     break;
 
+  case "status":
+    status();
+    break;
+
+  case "stop":
+    stop();
+    break;
+
   case "run":
   case "start": {
+    // Prevent double-start
+    const existing = readPid();
+    if (existing) {
+      console.error(`pulse: already running (pid ${existing}). Use "pulse stop" first.`);
+      process.exit(1);
+    }
+
     process.env.NODE_ENV   = process.env.NODE_ENV   || "production";
     process.env.PORT       = values.port            ?? process.env.PORT       ?? "3000";
     process.env.HOST       = values.host            ?? process.env.HOST       ?? "127.0.0.1";
     process.env.DB_PATH    = values["db-path"]      ?? process.env.DB_PATH    ?? path.join(homedir(), ".pulse", "pulse.db");
     if (!values.auth) process.env.PULSE_NO_AUTH = "1";
+
+    // Write PID file
+    ensurePulseDir();
+    writeFileSync(PID_FILE, String(process.pid));
+
+    // Clean up PID on exit
+    const cleanup = () => { try { unlinkSync(PID_FILE); } catch {} };
+    process.on("exit", cleanup);
+    process.on("SIGINT", () => { cleanup(); process.exit(0); });
+    process.on("SIGTERM", () => { cleanup(); process.exit(0); });
 
     // Hand off to the server entry. Resolved relative to this file so the
     // CLI works wherever bun's global bin happens to symlink it from.

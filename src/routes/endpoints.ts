@@ -53,22 +53,22 @@ export const endpointsRoutes = new Elysia({ prefix: "/api/endpoints" })
 
     const db = getDb();
     const { display_name, provider_name, provider_key, endpoint_url, model_name, api_key,
-      price_input_per_m, price_output_per_m, price_cache_input_per_m, price_cache_output_per_m } =
+      price_input_per_m, price_output_per_m, price_cache_input_per_m } =
       body as {
         display_name: string; provider_name: string; provider_key: string;
         endpoint_url: string; model_name: string; api_key: string;
         price_input_per_m?: number; price_output_per_m?: number;
-        price_cache_input_per_m?: number; price_cache_output_per_m?: number;
+        price_cache_input_per_m?: number;
       };
 
     const gatewayKey = "sgw_" + Array.from({ length: 24 }, () => "abcdefghijklmnopqrstuvwxyz0123456789"[Math.floor(Math.random() * 36)]).join("");
 
     db.run(
       `INSERT INTO endpoints (display_name, provider_name, provider_key, endpoint_url, model_name, api_key, gateway_key,
-        price_input_per_m, price_output_per_m, price_cache_input_per_m, price_cache_output_per_m)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        price_input_per_m, price_output_per_m, price_cache_input_per_m)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [display_name, provider_name, provider_key, endpoint_url, model_name, api_key, gatewayKey,
-        price_input_per_m || 0, price_output_per_m || 0, price_cache_input_per_m || 0, price_cache_output_per_m || 0]
+        price_input_per_m || 0, price_output_per_m || 0, price_cache_input_per_m || 0]
     );
     const row = db.query("SELECT * FROM endpoints ORDER BY id DESC LIMIT 1").get() as EndpointRow;
     return toEndpoint(row);
@@ -82,7 +82,7 @@ export const endpointsRoutes = new Elysia({ prefix: "/api/endpoints" })
     const allowedFields = [
       "provider_name", "provider_key", "endpoint_url", "status", "latency_ms",
       "error_rate", "enabled", "display_name", "provider_format", "model_name", "api_key",
-      "price_input_per_m", "price_output_per_m", "price_cache_input_per_m", "price_cache_output_per_m",
+      "price_input_per_m", "price_output_per_m", "price_cache_input_per_m",
     ];
     const setClauses: string[] = [];
     const values: (string | number | null)[] = [];

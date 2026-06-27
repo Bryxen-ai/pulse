@@ -39,7 +39,6 @@ function AddModal({ onClose, onCreated, token }: AddModalProps) {
   const [priceInputPerM, setPriceInputPerM] = useState("");
   const [priceOutputPerM, setPriceOutputPerM] = useState("");
   const [priceCacheInputPerM, setPriceCacheInputPerM] = useState("");
-  const [priceCacheOutputPerM, setPriceCacheOutputPerM] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -108,7 +107,6 @@ function AddModal({ onClose, onCreated, token }: AddModalProps) {
           price_input_per_m: priceInputPerM ? parseFloat(priceInputPerM) : 0,
           price_output_per_m: priceOutputPerM ? parseFloat(priceOutputPerM) : 0,
           price_cache_input_per_m: priceCacheInputPerM ? parseFloat(priceCacheInputPerM) : 0,
-          price_cache_output_per_m: priceCacheOutputPerM ? parseFloat(priceCacheOutputPerM) : 0,
         }),
       });
       if (!res.ok) {
@@ -333,17 +331,6 @@ function AddModal({ onClose, onCreated, token }: AddModalProps) {
                   placeholder="0.00"
                   value={priceCacheInputPerM}
                   onChange={(e) => setPriceCacheInputPerM(e.target.value)}
-                  style={inputStyle}
-                />
-              </div>
-              <div>
-                <label style={labelStyle}>{t("ep.priceCacheOutput")}</label>
-                <input
-                  type="number"
-                  step="0.000001"
-                  placeholder="0.00"
-                  value={priceCacheOutputPerM}
-                  onChange={(e) => setPriceCacheOutputPerM(e.target.value)}
                   style={inputStyle}
                 />
               </div>
@@ -639,10 +626,32 @@ export function Endpoints({ token }: { token: string }) {
                     {ep.provider_name}
                   </div>
                 </td>
-                <td className="mono" style={{ maxWidth: "180px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                <td
+                  className="mono"
+                  title={t("ep.copy")}
+                  style={{ maxWidth: "180px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "pointer" }}
+                  onClick={(e) => {
+                    navigator.clipboard.writeText(ep.endpoint_url);
+                    const el = e.currentTarget;
+                    el.style.color = "var(--green)";
+                    setTimeout(() => { el.style.color = ""; }, 600);
+                  }}
+                >
                   {ep.endpoint_url}
                 </td>
-                <td className="mono" style={{ fontSize: "12px" }}>{ep.model_name || "—"}</td>
+                <td
+                  className="mono"
+                  title={t("ep.copy")}
+                  style={{ fontSize: "12px", cursor: "pointer" }}
+                  onClick={(e) => {
+                    navigator.clipboard.writeText(ep.model_name);
+                    const el = e.currentTarget;
+                    el.style.color = "var(--green)";
+                    setTimeout(() => { el.style.color = ""; }, 600);
+                  }}
+                >
+                  {ep.model_name || "—"}
+                </td>
                 <td>
                   <span className={`cell-status ${ep.status === "healthy" ? "ok" : "err"}`}>
                     {ep.status === "healthy" ? t("ep.statusHealthy") : t("ep.statusUnhealthy")}

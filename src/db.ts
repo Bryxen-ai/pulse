@@ -131,7 +131,6 @@ function initSchema(db: Database) {
     { name: "price_input_per_m", def: "REAL DEFAULT 0" },
     { name: "price_output_per_m", def: "REAL DEFAULT 0" },
     { name: "price_cache_input_per_m", def: "REAL DEFAULT 0" },
-    { name: "price_cache_output_per_m", def: "REAL DEFAULT 0" },
   ];
   for (const col of newColumns) {
     try {

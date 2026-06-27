@@ -22,8 +22,11 @@ const CHART_H = 200;
 const CHART_L = 50; // left padding
 
 const providerColors: Record<string, string> = {
-  OpenAI: "oklch(58% 0.18 255)",
-  Anthropic: "oklch(56% 0.12 170)",
+  OpenAI: "#3b82f6",      // blue
+  Anthropic: "#8b5cf6",   // purple
+  deepseek: "#10b981",    // green
+  flash: "#f59e0b",       // amber
+  default: "#6366f1",     // indigo
 };
 
 function renderChart(trend: TrendPoint[]) {
@@ -48,7 +51,11 @@ function renderChart(trend: TrendPoint[]) {
   if (maxTokens === 0) maxTokens = 1;
 
   const scaleY = (v: number) => CHART_H - (v / maxTokens) * (CHART_H - 20);
-  const stepX = days.length > 1 ? (CHART_W - CHART_L) / (days.length - 1) : 0;
+  // When only one day: center the point. Otherwise: distribute evenly.
+  const stepX = days.length > 1 ? (CHART_W - CHART_L - 80) / (days.length - 1) : 0;
+  const singleDayX = (CHART_W - CHART_L) / 2 + CHART_L;
+  const getX = (di: number) =>
+    days.length === 1 ? singleDayX : CHART_L + di * stepX;
 
   // Y-axis labels
   const yLabels = [0, Math.round(maxTokens * 0.5), maxTokens];
@@ -66,32 +73,59 @@ function renderChart(trend: TrendPoint[]) {
         const y = scaleY(v);
         return (
           <g key={i}>
-            <line x1={CHART_L} y1={y} x2={CHART_W} y2={y} stroke="oklch(94% 0.004 250)" strokeWidth="1" strokeDasharray={i === 0 ? "" : "4 4"} />
-            <text x={CHART_L - 6} y={y + 4} fontSize="10" fill="oklch(54% 0.012 250)" textAnchor="end">{formatY(v)}</text>
+            <line x1={CHART_L} y1={y} x2={CHART_W} y2={y} stroke="#e5e7eb" strokeWidth="1" strokeDasharray={i === 0 ? "" : "4 4"} />
+            <text x={CHART_L - 6} y={y + 4} fontSize="10" fill="#6b7280" textAnchor="end">{formatY(v)}</text>
           </g>
         );
       })}
 
       {/* Lines per provider */}
       {providerList.map((provider, pi) => {
-        const points = days.map((day, di) => {
-          const v = dayMap.get(day)?.[provider] || 0;
-          return `${CHART_L + di * stepX},${scaleY(v)}`;
-        });
-        const color = providerColors[provider] || "oklch(58% 0.18 255)";
+        const pointCoords = days.map((day, di) => ({
+          x: getX(di),
+          y: scaleY(dayMap.get(day)?.[provider] || 0),
+          v: dayMap.get(day)?.[provider] || 0,
+        }));
+        const points = pointCoords.map((p) => `${p.x},${p.y}`);
+        const color = providerColors[provider] || providerColors.default;
         const legendX = CHART_W - (providerList.length - pi) * 90;
+        const lastPoint = pointCoords[pointCoords.length - 1];
+        const lastDay = days[days.length - 1] ?? "";
+        const legendY = scaleY(dayMap.get(lastDay)?.[provider] || 0) - 6;
         return (
           <g key={provider}>
-            <polygon points={`${CHART_L},${CHART_H} ${points.join(" ")} ${CHART_L + (days.length - 1) * stepX},${CHART_H}`} fill={`${color} / 0.12`} />
-            <polyline points={points.join(" ")} fill="none" stroke={color} strokeWidth="2" />
-            <text x={legendX} y={scaleY(dayMap.get(days[days.length - 1])?.[provider] || 0) - 6} fontSize="11" fill={color} textAnchor="end" fontWeight="600">{provider}</text>
+            {/* Filled area only when we have 2+ points */}
+            {days.length > 1 && (
+              <polygon
+                points={`${CHART_L},${CHART_H} ${points.join(" ")} ${getX(days.length - 1)},${CHART_H}`}
+                fill={color}
+                fillOpacity="0.12"
+              />
+            )}
+            {/* Line only when we have 2+ points */}
+            {days.length > 1 && (
+              <polyline points={points.join(" ")} fill="none" stroke={color} strokeWidth="2" />
+            )}
+            {/* Dots for every data point (also makes single-day visible) */}
+            {pointCoords.map((p, i) => (
+              <circle key={i} cx={p.x} cy={p.y} r="4" fill={color} />
+            ))}
+            {/* Value label next to the single point */}
+            {days.length === 1 && lastPoint && (
+              <text x={lastPoint.x + 8} y={lastPoint.y + 4} fontSize="11" fill={color} fontWeight="600">
+                {formatY(lastPoint.v)}
+              </text>
+            )}
+            <text x={legendX} y={legendY} fontSize="11" fill={color} textAnchor="end" fontWeight="600">
+              {provider}
+            </text>
           </g>
         );
       })}
 
       {/* Day labels */}
       {days.map((day, di) => (
-        <text key={day} x={CHART_L + di * stepX} y={218} fontSize="10" fill="oklch(54% 0.012 250)" textAnchor="middle">{dayLabels[di]}</text>
+        <text key={day} x={getX(di)} y={218} fontSize="10" fill="#6b7280" textAnchor="middle">{dayLabels[di]}</text>
       ))}
     </svg>
   );

@@ -1,6 +1,6 @@
 {
   "name": "@bryxen/pulse",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Self-hosted AI gateway — OpenAI- and Anthropic-compatible, with audit logs, live dashboards, and per-token cost tracking. Powered by Bun.",
   "private": false,
   "type": "module",

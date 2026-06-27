@@ -19,14 +19,13 @@ interface EndpointRow {
   price_input_per_m: number;
   price_output_per_m: number;
   price_cache_input_per_m: number;
-  price_cache_output_per_m: number;
 }
 
 function lookupEndpoint(gatewayKey: string): EndpointRow | null {
   if (!gatewayKey) return null;
   const db = getDb();
   return db.query(
-    "SELECT endpoint_url, api_key, model_name, provider_name, price_input_per_m, price_output_per_m, price_cache_input_per_m, price_cache_output_per_m FROM endpoints WHERE gateway_key = ? AND enabled = 1"
+    "SELECT endpoint_url, api_key, model_name, provider_name, price_input_per_m, price_output_per_m, price_cache_input_per_m FROM endpoints WHERE gateway_key = ? AND enabled = 1"
   ).get(gatewayKey) as EndpointRow | null;
 }
 

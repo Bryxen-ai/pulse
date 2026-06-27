@@ -15,7 +15,7 @@ export interface Session {
 export interface Message {
   id: number;
   session_id: string;
-  role: "user" | "assistant" | "system";
+  role: "user" | "assistant" | "system" | "tool_result";
   content: string;
   tokens: number;
   latency: string;
@@ -84,7 +84,6 @@ export interface Endpoint {
   price_input_per_m: number;
   price_output_per_m: number;
   price_cache_input_per_m: number;
-  price_cache_output_per_m: number;
 }
 
 export interface EndpointCreateRequest {

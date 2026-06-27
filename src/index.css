@@ -1010,6 +1010,11 @@ tr:last-child td {
   max-width: 90%;
 }
 
+.msg-row.tool_result {
+  align-self: flex-start;
+  max-width: 86%;
+}
+
 .msg-body {
   display: flex;
   flex-direction: column;
@@ -1080,6 +1085,11 @@ tr:last-child td {
   font-size: 8px;
 }
 
+.msg-avatar.tool_result {
+  background: linear-gradient(135deg, oklch(75% 0.08 180), oklch(65% 0.10 180));
+  font-size: 11px;
+}
+
 .msg-bubble {
   padding: 10px 14px;
   border-radius: 14px;
@@ -1113,6 +1123,15 @@ tr:last-child td {
   text-align: center;
   padding: 7px 14px;
   border: 1px dashed var(--border);
+}
+
+.msg-row.tool_result .msg-bubble {
+  background: oklch(97% 0.02 180);
+  border: 1px solid oklch(88% 0.04 180);
+  border-bottom-left-radius: 4px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  font-family: var(--font-mono);
+  font-size: 12.5px;
 }
 
 .msg-meta {
