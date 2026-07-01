@@ -1,6 +1,6 @@
 {
   "name": "@bryxen/pulse",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Self-hosted AI gateway — OpenAI- and Anthropic-compatible, with audit logs, live dashboards, and per-token cost tracking. Powered by Bun.",
   "private": false,
   "type": "module",
@@ -54,6 +54,9 @@
     "@elysiajs/jwt": "^1.4.2",
     "@elysiajs/static": "^1.4.10",
     "elysia": "^1.4.29",
+    "katex": "^0.17.0",
+    "marked": "^18.0.5",
+    "marked-katex-extension": "^5.1.10",
     "react": "^19",
     "react-dom": "^19"
   },

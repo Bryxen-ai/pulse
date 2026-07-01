@@ -1,6 +1,11 @@
 import { useState, useEffect, useRef, useMemo } from "react";
+import { marked } from "marked";
+import markedKatex from "marked-katex-extension";
+import "katex/dist/katex.min.css";
 import { useTranslation } from "../i18n";
 import type { Session, Message, AssistantResponse, ContentBlock } from "../types";
+
+marked.use(markedKatex({ throwOnError: false, output: "html" }));
 
 // ====================== SessionBar ======================
 interface SessionBarProps {
@@ -189,25 +194,17 @@ function flattenToolResult(content: string | ContentBlock[]): string {
 }
 
 // ====================== Renderers ======================
+function normalizeLatex(text: string): string {
+  // Convert \[...\] → $$...$$ and \(...\) → $...$
+  return text
+    .replace(/\\\[([\s\S]*?)\\\]/g, (_m, math) => `$$${math}$$`)
+    .replace(/\\\(([\s\S]*?)\\\)/g, (_m, math) => `$${math}$`);
+}
+
 function RichText({ text }: { text: string }) {
-  // Render fenced ```code``` blocks with code styling, leave the rest as plain text.
   if (!text) return null;
-  const parts = text.split(/(```[\s\S]*?```)/g);
-  return (
-    <>
-      {parts.map((p, i) => {
-        if (p.startsWith("```") && p.endsWith("```")) {
-          const inner = p.slice(3, -3).replace(/^[a-zA-Z0-9_-]*\n?/, "");
-          return (
-            <pre key={i} className="msg-code">
-              <code>{inner}</code>
-            </pre>
-          );
-        }
-        return <span key={i}>{p}</span>;
-      })}
-    </>
-  );
+  const html = marked.parse(normalizeLatex(text), { async: false }) as string;
+  return <div className="msg-markdown" dangerouslySetInnerHTML={{ __html: html }} />;
 }
 
 function ThinkingBlock({ text }: { text: string }) {
@@ -283,11 +280,7 @@ function BlocksRenderer({ blocks }: { blocks: ContentBlock[] }) {
           case "text": {
             const text = (b as { text: string }).text;
             if (!text) return null;
-            return (
-              <div key={i} className="msg-bubble">
-                <RichText text={text} />
-              </div>
-            );
+            return <RichText key={i} text={text} />;
           }
           case "thinking":
             return <ThinkingBlock key={i} text={(b as { thinking: string }).thinking || ""} />;
@@ -371,8 +364,25 @@ function formatTime(ts: string | undefined): string {
 function ChatPanel({ messages, session }: ChatPanelProps) {
   const { t } = useTranslation();
   const bottomRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const prevMessageCountRef = useRef(0);
 
   useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const newCount = messages.length;
+    const prevCount = prevMessageCountRef.current;
+    prevMessageCountRef.current = newCount;
+
+    // Only auto-scroll when new messages arrive
+    if (newCount <= prevCount) return;
+
+    // Don't interrupt if user has scrolled up to read history
+    // (threshold: more than 100px from the bottom)
+    const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+    if (distanceFromBottom > 100) return;
+
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
@@ -420,7 +430,7 @@ function ChatPanel({ messages, session }: ChatPanelProps) {
 
   return (
     <div className="chat-panel">
-      <div className="chat-messages">
+      <div className="chat-messages" ref={containerRef}>
         {parsed.map(({ msg, parsed: p }) => {
           const isAssistant = msg.role === "assistant";
           const hasData = isAssistant && msg.tokens > 0;
@@ -441,9 +451,7 @@ function ChatPanel({ messages, session }: ChatPanelProps) {
                 {blocks.length > 0 ? (
                   <BlocksRenderer blocks={blocks} />
                 ) : fallback ? (
-                  <div className="msg-bubble">
-                    <RichText text={fallback} />
-                  </div>
+                  <RichText text={fallback} />
                 ) : null}
 
                 {p.structured && (

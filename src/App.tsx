@@ -67,6 +67,8 @@ export function App() {
 
   // Track whether we've done the initial fetch
   const initialFetchDone = useRef(false);
+  // Keep a ref so the polling closure can read the latest activeSessionId
+  const activeSessionIdRef = useRef<string>("");
 
   // Poll sessions every 3 seconds
   useEffect(() => {
@@ -84,11 +86,21 @@ export function App() {
         .then((data: Session[] | null) => {
           if (!data) return;
           setSessions(data);
-          // Only auto-select the first session on initial load
           if (!initialFetchDone.current && data.length > 0) {
-            setActiveSessionId(data[0]!.id);
+            // Initial load: select the most recent live session, or the first one
+            const live = data.find((s) => s.status === "live");
+            const target = live ?? data[0]!;
+            setActiveSessionId(target.id);
+            activeSessionIdRef.current = target.id;
+            initialFetchDone.current = true;
+          } else if (initialFetchDone.current) {
+            // Auto-follow: if a live session appears that isn't currently selected, switch to it
+            const live = data.find((s) => s.status === "live");
+            if (live && live.id !== activeSessionIdRef.current) {
+              setActiveSessionId(live.id);
+              activeSessionIdRef.current = live.id;
+            }
           }
-          initialFetchDone.current = true;
         })
         .catch(console.error);
     };
@@ -100,7 +112,10 @@ export function App() {
 
   // Reset initialFetchDone when token changes (logout)
   useEffect(() => {
-    if (!token) initialFetchDone.current = false;
+    if (!token) {
+      initialFetchDone.current = false;
+      activeSessionIdRef.current = "";
+    }
   }, [token]);
 
   const fetchMessages = useCallback(
@@ -124,6 +139,7 @@ export function App() {
 
   const handleSelectSession = (id: string) => {
     setActiveSessionId(id);
+    activeSessionIdRef.current = id;
     fetchMessages(id);
   };
 

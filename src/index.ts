@@ -67,12 +67,72 @@ function logRequest(
 
 interface BodyMessage { role: string; content: unknown }
 
-function createSession(provider: string, model: string, messages: BodyMessage[]): string {
+function getOrCreateSession(provider: string, model: string, messages: BodyMessage[], existingSessionId?: string): string {
   const db = getDb();
-  const id = `sess_${Date.now().toString(36)}`;
+
+  // If a session ID is provided, verify it exists and append messages
+  if (existingSessionId) {
+    const existing = db.query("SELECT id, status FROM sessions WHERE id = ?").get(existingSessionId) as { id: string; status: string } | null;
+    if (existing) {
+      db.run("UPDATE sessions SET status = 'live', updated_at = datetime('now') WHERE id = ?", [existingSessionId]);
+      for (const m of messages) {
+        const text = typeof m.content === "string" ? m.content : JSON.stringify(m.content);
+        db.run("INSERT INTO messages (session_id, role, content, tokens, latency) VALUES (?, ?, ?, 0, '—')", [existingSessionId, m.role, text]);
+      }
+      return existingSessionId;
+    }
+  }
+
+  // Try to match an existing session by conversation continuity:
+  // The request's messages array is the full context window sent to the model.
+  // If a recent session's stored messages are a prefix of the incoming messages,
+  // this is the same ongoing conversation — reuse that session and append only the new tail.
   const firstUser = messages.find((m) => m.role === "user");
-  const raw = typeof firstUser?.content === "string" ? firstUser.content : JSON.stringify(firstUser?.content || "");
-  const title = raw.slice(0, 60) + (raw.length > 60 ? "…" : "");
+  const firstUserText = typeof firstUser?.content === "string" ? firstUser.content : JSON.stringify(firstUser?.content || "");
+
+  if (messages.length > 1) {
+    // Look for recent sessions (within 2 hours) with the same provider/model and matching first user message
+    const titlePrefix = firstUserText.slice(0, 60);
+    const candidates = db.query(
+      `SELECT id FROM sessions WHERE provider = ? AND model = ? AND title = ? AND updated_at >= datetime('now', '-2 hours') ORDER BY updated_at DESC LIMIT 5`
+    ).all(provider, model, titlePrefix + (firstUserText.length > 60 ? "…" : "")) as { id: string }[];
+
+    for (const candidate of candidates) {
+      // Get stored messages for this candidate session
+      const stored = db.query(
+        "SELECT role, content FROM messages WHERE session_id = ? AND role IN ('user','assistant') ORDER BY id ASC"
+      ).all(candidate.id) as { role: string; content: string }[];
+
+      if (stored.length === 0) continue;
+
+      // Check if incoming messages contain all stored messages as a prefix
+      // (the client re-sends the full conversation each time)
+      let matches = true;
+      for (let i = 0; i < stored.length && i < messages.length; i++) {
+        const incomingText = typeof messages[i]!.content === "string"
+          ? messages[i]!.content
+          : JSON.stringify(messages[i]!.content);
+        // Assistant messages are stored as JSON (finalizeSession), compare role only for assistant
+        if (messages[i]!.role !== stored[i]!.role) { matches = false; break; }
+        if (stored[i]!.role === "user" && incomingText !== stored[i]!.content) { matches = false; break; }
+      }
+
+      if (matches && messages.length > stored.length) {
+        // Reuse this session — append only the new messages beyond what's already stored
+        db.run("UPDATE sessions SET status = 'live', updated_at = datetime('now') WHERE id = ?", [candidate.id]);
+        const newMessages = messages.slice(stored.length);
+        for (const m of newMessages) {
+          const text = typeof m.content === "string" ? m.content : JSON.stringify(m.content);
+          db.run("INSERT INTO messages (session_id, role, content, tokens, latency) VALUES (?, ?, ?, 0, '—')", [candidate.id, m.role, text]);
+        }
+        return candidate.id;
+      }
+    }
+  }
+
+  // Create new session
+  const id = `sess_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
+  const title = firstUserText.slice(0, 60) + (firstUserText.length > 60 ? "…" : "");
   db.run("INSERT INTO sessions (id, title, provider, model, status) VALUES (?, ?, ?, ?, 'live')",
     [id, title || "New Session", provider, model]);
   for (const m of messages) {
@@ -109,7 +169,11 @@ async function proxyOpenAI(gatewayKey: string, request: Request, set: { status: 
   const start = Date.now();
   const isStream = !!body.stream;
   const reqMessages = (body.messages as BodyMessage[] | undefined) || [];
-  const sessionId = createSession(ep.provider_name || baseUrl, model, reqMessages);
+  const existingSessionId = request.headers.get("x-session-id") || undefined;
+  const sessionId = getOrCreateSession(ep.provider_name || baseUrl, model, reqMessages, existingSessionId);
+
+  // Add session ID to response headers
+  set.headers["X-Session-Id"] = sessionId;
 
   try {
     const upstream = await fetch(`${baseUrl}/chat/completions`, {
@@ -229,7 +293,11 @@ async function proxyAnthropic(gatewayKey: string, request: Request, set: { statu
   const start = Date.now();
   const isStream = !!body.stream;
   const reqMessages = (body.messages as BodyMessage[] | undefined) || [];
-  const sessionId = createSession(ep.provider_name || baseUrl, model, reqMessages);
+  const existingSessionId = request.headers.get("x-session-id") || undefined;
+  const sessionId = getOrCreateSession(ep.provider_name || baseUrl, model, reqMessages, existingSessionId);
+
+  // Add session ID to response headers
+  set.headers["X-Session-Id"] = sessionId;
 
   try {
     const upstream = await fetch(`${baseUrl}/messages`, {
